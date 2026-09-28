@@ -1,0 +1,61 @@
+#%RAML 1.0
+
+title: Smart Order Management API
+version: v1
+
+baseUri: http://localhost:8081/api
+
+/orders:
+
+  get:
+    description: Get all orders
+    responses:
+      200:
+        body:
+          application/json:
+
+  post:
+    description: Create a new order
+    body:
+      application/json:
+        example:
+          {
+            "customerName": "Leena",
+            "product": "Laptop",
+            "quantity": 1,
+            "price": 50000
+          }
+    responses:
+      201:
+        body:
+          application/json:
+
+/orders/{id}:
+
+  get:
+    description: Get an order by ID
+    responses:
+      200:
+        body:
+          application/json:
+
+  put:
+    description: Update an order
+    body:
+      application/json:
+        example:
+          {
+            "customerName": "Leena",
+            "product": "Laptop",
+            "quantity": 2,
+            "price": 50000
+          }
+    responses:
+      200:
+        body:
+          application/json:
+
+  delete:
+    description: Delete an order
+    responses:
+      204:

@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:api-gateway="http://www.mulesoft.org/schema/mule/api-gateway" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="         http://www.mulesoft.org/schema/mule/core         http://www.mulesoft.org/schema/mule/core/current/mule.xsd          http://www.mulesoft.org/schema/mule/mule-apikit         http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd          http://www.mulesoft.org/schema/mule/http         http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd          http://www.mulesoft.org/schema/mule/ee/core         http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd          http://www.mulesoft.org/schema/mule/db         http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd          http://www.mulesoft.org/schema/mule/vm         http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd          http://www.mulesoft.org/schema/mule/salesforce         http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd          http://www.mulesoft.org/schema/mule/secure-properties         http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd
+http://www.mulesoft.org/schema/mule/api-gateway http://www.mulesoft.org/schema/mule/api-gateway/current/mule-api-gateway.xsd">
+    <!-- ===================================================== -->
+    <!-- APIkit Configuration -->
+    <!-- ===================================================== -->
+    <apikit:config outboundHeadersMapName="outboundHeadersMapName" httpStatusVarName="httpStatus" doc:name="Router" doc:id="3fa811cb-3b5d-408e-bcd7-63f1b47c8630" name="Router" api="orders.raml" parser="RAML" />
+    <!-- ===================================================== -->
+    <!-- Database Configuration -->
+    <!-- ===================================================== -->
+    <db:config name="Database_Config" doc:name="Database Config" doc:id="1b13dc6f-c88c-4d93-acb2-2a950df2e4e1">
+        <db:my-sql-connection host="${secure::db.host}" port="${secure::db.port}" user="${secure::db.user}" password="${secure::db.password}" database="${secure::db.database}" />
+    </db:config>
+    <!-- ===================================================== -->
+    <!-- HTTP Listener Configuration -->
+    <!-- ===================================================== -->
+    <http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="6ea45bb1-7731-42d0-ae7f-8628f69d32ea">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <!-- ===================================================== -->
+    <!-- Secure Properties Configuration -->
+    <!-- ===================================================== -->
+    <secure-properties:config name="Secure_Properties_Config" doc:name="Secure Properties Config" doc:id="97d03684-7fb4-458d-9f0e-76667c2e5dd2" file="config\secure-properties.yaml" key="LeenaSecureKey123">
+        <secure-properties:encrypt algorithm="Blowfish" mode="CBC" />
+    </secure-properties:config>
+    <!-- ===================================================== -->
+    <!-- Main API Flow -->
+    <!-- ===================================================== -->
+    <api-gateway:autodiscovery apiId="21201617" ignoreBasePath="true" doc:name="API Autodiscovery" doc:id="90c1eb80-05c8-4803-b58c-ef39941efaad" flowRef="order-apiFlow" />
+	<flow name="order-apiFlow" doc:id="c3ec8e69-b569-4c5d-92fb-5cd12adbefb9">
+        <http:listener doc:name="Listener" doc:id="17f245ee-92c5-42be-98e6-dc9e0a96e9ef" config-ref="HTTP_Listener_config" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]" />
+            <http:error-response statusCode="#[vars.httpStatus default 500]" />
+        </http:listener>
+        <apikit:router doc:name="APIkit Router" doc:id="ce794caa-b336-407c-b13b-d33a6ef41df1" config-ref="Router" />
+    </flow>
+    <!-- ===================================================== -->
+    <!-- PUT /orders/{id} -->
+    <!-- ===================================================== -->
+    <flow name="put:\orders\(id):application\json:Router">
+        <set-variable value="#[uuid()]" doc:name="Set Variable" doc:id="faa9d4e2-a053-458c-8cc5-0e3a3b250b40" variableName="orderId" />
+        <db:update doc:name="Update" doc:id="32cbd961-88d6-494d-8a43-7adf14fcbfed" config-ref="Database_Config">
+            <db:sql><![CDATA[UPDATE orders
+SET
+    customer_name = :customerName,
+    product = :product,
+    quantity = :quantity,
+    price = :price,
+    total = :total
+WHERE order_id = :orderId]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+    orderId: attributes.uriParams.id,
+    customerName: payload.customerName,
+    product: payload.product,
+    quantity: payload.quantity,
+    price: payload.price,
+    total: payload.quantity * payload.price
+}]]]></db:input-parameters>
+        </db:update>
+        <ee:transform doc:name="Transform Message">
+            <ee:variables>
+                <ee:set-variable variableName="id"><![CDATA[%dw 2.0
+output application/json
+---
+{
+    message: "Order updated successfully",
+    orderId: attributes.uriParams.id
+}]]></ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        <logger level="INFO" message="put:\orders\(id)\:application\json\:Router" />
+    </flow>
+    <!-- ===================================================== -->
+    <!-- DELETE /orders/{id} -->
+    <!-- ===================================================== -->
+    <flow name="delete:\orders\(id):Router">
+        <db:delete doc:name="Delete" doc:id="73801610-6b92-4bbd-84f5-e27a6a9c9045" config-ref="Database_Config">
+            <db:sql><![CDATA[DELETE FROM orders
+WHERE order_id = :orderId]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+    orderId: attributes.uriParams.id
+}]]]></db:input-parameters>
+        </db:delete>
+        <set-payload value="#[null]" doc:name="Set Payload" doc:id="ebd79ed4-178f-46fe-8f0c-5f0f2eb052d6" />
+        <logger level="INFO" message="delete:\orders\(id)\:Router" />
+    </flow>
+    <!-- ===================================================== -->
+    <!-- GET /orders -->
+    <!-- ===================================================== -->
+    <flow name="get:\orders:Router">
+             <db:select
+            doc:name="Get All Orders"
+            config-ref="Database_Config">
+
+            <db:sql><![CDATA[
+SELECT
+    order_id,
+    customer_name,
+    product,
+    quantity,
+    price,
+    total,
+    status
+FROM orders
+            ]]></db:sql>
+
+        </db:select>
+
+
+        <ee:transform doc:name="Transform Response">
+
+            <ee:message>
+
+                <ee:set-payload><![CDATA[
+%dw 2.0
+output application/json
+---
+payload
+                ]]></ee:set-payload>
+
+            </ee:message>
+
+        </ee:transform>
+
+
+        <logger
+            level="INFO"
+            message="get:\orders\\\:Router"/>
+
+    </flow>
+    <!-- ===================================================== -->
+    <!-- GET /orders/{id} -->
+    <!-- ===================================================== -->
+    <flow name="get:\orders\(id):Router" doc:id="f0e49e88-11d8-4c7b-8dc3-9567dbf33b54">
+        <!-- Database Select -->
+        <db:select doc:name="Select" doc:id="81bacce5-c1c6-4b71-85d6-29758f2ee384" config-ref="Database_Config">
+            <db:sql><![CDATA[SELECT
+    order_id,
+    customer_name,
+    product,
+    quantity,
+    price,
+    total,
+    status
+FROM orders
+WHERE order_id = :orderId;]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+    orderId: attributes.uriParams.id
+}]]]></db:input-parameters>
+        </db:select>
+        <!-- Convert Database Result to JSON Response -->
+        <ee:transform doc:name="Transform Message">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+if (isEmpty(payload))
+    {
+        message: "Order not found"
+    }
+else
+    payload[0]]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <!-- Logger -->
+        <logger level="INFO" message="get:\orders\(id)\:Router" />
+    </flow>
+    <!-- ===================================================== -->
+    <!-- POST /orders -->
+    <!-- ===================================================== -->
+    <flow name="post:\orders:application\json:Router">
+        <!-- Generate UUID -->
+        <set-variable value="#[uuid()]" doc:name="Set Variable" doc:id="4ce7c243-d026-457c-9fd5-2707a5e6f175" variableName="orderId" />
+        <!-- Customer Name -->
+        <set-variable value="#[payload.customerName]" doc:name="Set Variable" doc:id="9bd748e9-a94e-4d09-8334-f79996e7a5be" variableName="customerName" />
+        <!-- Product -->
+        <set-variable value="#[payload.product]" doc:name="Set Variable" doc:id="5573d443-a5c4-4661-aae6-00b2520509a4" variableName="product" />
+        <!-- Quantity -->
+        <set-variable value="#[payload.quantity as Number]" doc:name="Set Variable" doc:id="e65f24de-b4df-4577-adfb-0332ed0a6306" variableName="quantity" />
+        <!-- Price -->
+        <set-variable value="#[payload.price as Number]" doc:name="Set Variable" doc:id="2497341e-44d2-4ee9-a59a-81e8953fa663" variableName="price" />
+        <!-- Calculate Total -->
+        <set-variable value="#[vars.quantity * vars.price]" doc:name="Set Variable" doc:id="996c5977-8bd0-42e6-ab7d-08d5c955a991" variableName="total" />
+        <!-- Insert Order -->
+        <db:insert doc:name="Insert" doc:id="ac0c35ea-a940-4616-908a-d5ae9c26e9d1" config-ref="Database_Config">
+            <db:sql><![CDATA[INSERT INTO orders
+(
+    order_id,
+    customer_name,
+    product,
+    quantity,
+    price,
+    total,
+    status
+)
+VALUES
+(
+    :orderId,
+    :customerName,
+    :product,
+    :quantity,
+    :price,
+    :total,
+    :status
+)]]></db:sql>
+            <db:input-parameters><![CDATA[#[{
+    orderId: vars.orderId,
+    customerName: vars.customerName,
+    product: vars.product,
+    quantity: vars.quantity,
+    price: vars.price,
+    total: vars.total,
+    status: "CREATED"
+}]]]></db:input-parameters>
+        </db:insert>
+        <!-- Publish to VM Queue -->
+        <vm:publish queueName="orderQueue" doc:name="Publish" doc:id="b5d2bbd3-568d-4109-bd5a-f3d259b29e14" config-ref="VM_Config">
+            <vm:content><![CDATA[#[output application/json
+---
+{
+    orderId: vars.orderId,
+    customerName: vars.customerName,
+    product: vars.product,
+    quantity: vars.quantity,
+    price: vars.price,
+    total: vars.total,
+    status: "CREATED"
+}]]]></vm:content>
+        </vm:publish>
+        <!-- POST Response -->
+        <ee:transform doc:name="Transform Message" doc:id="a6d7c243-d026-457c-9fd5-2707a5e6f175">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    orderId: vars.orderId,
+    customerName: vars.customerName,
+    product: vars.product,
+    quantity: vars.quantity,
+    price: vars.price,
+    total: vars.total,
+    status: "CREATED"
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        <logger level="INFO" message="post:\orders\:application\json\:Router" />
+    </flow>
+    <!-- ===================================================== -->
+    <!-- Scheduler Flow -->
+    <!-- ===================================================== -->
+	<flow name="order-schedulerFlow" doc:id="e73a3d83-5562-4844-ae60-66d5433b7fed" initialState="started">
+        <scheduler doc:name="Scheduler" doc:id="24286cd6-cfa4-4701-a518-b05c398a65eb">
+            <scheduling-strategy>
+                <fixed-frequency frequency="30" timeUnit="SECONDS" />
+            </scheduling-strategy>
+        </scheduler>
+        <db:select doc:name="Select" doc:id="6356ffdf-f5e9-437e-9b33-64a9375ea9c2" config-ref="Database_Config">
+            <db:sql><![CDATA[SELECT *
+FROM orders
+WHERE status = 'CREATED';]]></db:sql>
+        </db:select>
+        <foreach doc:name="For Each" doc:id="1d0babfe-82e7-4a53-a98d-ddf84c70a130">
+            <vm:publish doc:name="Publish" doc:id="4cef4c6f-92f9-4d35-a73f-6ac30b8cb877" config-ref="VM_Config" sendCorrelationId="ALWAYS" queueName="orderQueue">
+                <vm:content><![CDATA[#[output application/json
+---
+{
+    orderId: payload.order_id,
+    customerName: payload.customer_name,
+    product: payload.product,
+    quantity: payload.quantity,
+    price: payload.price,
+    total: payload.total,
+    status: payload.status
+}]]]></vm:content>
+            </vm:publish>
+        </foreach>
+    </flow>
+</mule>

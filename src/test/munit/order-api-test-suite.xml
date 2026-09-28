@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:munit="http://www.mulesoft.org/schema/mule/munit"
+	xmlns:munit-tools="http://www.mulesoft.org/schema/mule/munit-tools" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xsi:schemaLocation="
+		http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+		http://www.mulesoft.org/schema/mule/munit http://www.mulesoft.org/schema/mule/munit/current/mule-munit.xsd
+		http://www.mulesoft.org/schema/mule/munit-tools  http://www.mulesoft.org/schema/mule/munit-tools/current/mule-munit-tools.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<munit:config name="order-api-test-suite.xml" />
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="0117d3a9-5ab9-4dbe-91ad-6f5067a9faa8" basePath="/api" >
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>
+	<munit:test name="order-api-test-suite-order-apiFlowTest" doc:id="54af3362-4a61-4505-803c-7522013221d3" description="Test">
+		<munit:enable-flow-sources >
+			<munit:enable-flow-source value="order-apiFlow" />
+		</munit:enable-flow-sources>
+		<munit:behavior >
+			<munit:set-event doc:name="Set Event" doc:id="5f0c748f-f5a0-4358-af50-6725ff017c99" >
+				<munit:attributes value='#[{uriParams: {id: "0d06735c-dad1-4f1a-b216-e8389d8c1050"},headers: {&#10;    "client_id": "f96f34a4c4db4db9934862c10c41aff2",&#10;    "client_secret": "0B42B5cDd5124daA8880D01F8EaD548c"&#10;  }}]' />
+			</munit:set-event>
+		</munit:behavior>
+		<munit:execution>
+			<flow-ref doc:name="Flow Reference" doc:id="64c5d4ff-2cc6-4cf8-9a07-56984bd25b54" name="get:\orders\(id):Router"/>
+		</munit:execution>
+		<munit:validation >
+			<munit-tools:assert-that doc:name="Assert that" doc:id="cc6eb755-2673-428e-8930-d2d50e6a5d21" expression="#[payload.order_id]" is='#[MunitTools::equalTo("0d06735c-dad1-4f1a-b216-e8389d8c1050")]'/>
+		</munit:validation>
+	</munit:test>
+
+
+</mule>

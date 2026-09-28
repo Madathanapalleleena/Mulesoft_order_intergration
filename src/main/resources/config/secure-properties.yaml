@@ -1,0 +1,10 @@
+db:
+  host: "localhost"
+  port: "3306"
+  database: "smart_order_db"
+  user: "root"
+  password: "root"
+
+api:
+  clientId: "leena-client"
+  clientSecret: "leena-secret"

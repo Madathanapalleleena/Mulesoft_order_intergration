@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<vm:config name="VM_Config" doc:name="VM Config" doc:id="23bc5e12-66ce-42aa-8af1-4fd9682327b9" >
+		<vm:queues >
+			<vm:queue queueName="orderQueue" />
+		</vm:queues>
+	</vm:config>
+	<flow name="order-queueFlow" doc:id="a3b4fd20-d68d-4ee1-875c-334374ceee9a" >
+		<vm:listener doc:name="Listener" doc:id="c40322ba-93e0-420f-9875-fdf00ba19a88" config-ref="VM_Config" queueName="orderQueue" numberOfConsumers="1"/>
+		<logger level="INFO" doc:name="Logger" doc:id="fa7611dd-d6db-40b5-9d2a-2ee7bf1e39c0" />
+		<ee:transform doc:name="Transform Message" doc:id="b5a08624-d66a-4259-ab05-de410fa208ff" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+    orderId: payload.orderId,
+    customerName: payload.customerName,
+    product: payload.product,
+    quantity: payload.quantity,
+    price: payload.price,
+    total: payload.total,
+    status: "PROCESSING"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="bd2aea3c-ef80-4b6f-8e91-b5c18a85275f" />
+	</flow>
+</mule>
